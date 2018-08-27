@@ -204,14 +204,22 @@ static void init_glfw(void)
 
 static void create_window(GFXscreen gfxs)
 {
-	const GLFWvidmode *mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
 	gfxs->win = glfwCreateWindow(gfxs->w, gfxs->h, gfxs->title,
 		NULL, NULL);
 	if (!gfxs->win)
-		exit_log(FNAME, 1,
-			"Failed creating window, GLFW failed.");
-	glfwSetWindowPos(gfxs->win, (mode->width - gfxs->w) / 2,
-		(mode->height - gfxs->h) / 2);
+		exit_log(FNAME, 1, "Failed creating window, GLFW failed.");
+    
+    int primary_monitor_x;
+    int primary_monitor_y;
+    glfwGetMonitorPos(glfwGetPrimaryMonitor(), &primary_monitor_x,
+        &primary_monitor_y);
+    const GLFWvidmode *mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+	glfwSetWindowPos(
+        gfxs->win,
+        primary_monitor_x + (mode->width - gfxs->w) / 2,
+		primary_monitor_y + (mode->height - gfxs->h) / 2
+    );
+
 	glfwMakeContextCurrent(gfxs->win);
 }
 
