@@ -264,12 +264,12 @@ static void update_timers(Chip8 c8, unsigned hz)
 		float curr_tick_time = (float)clock() / CLOCKS_PER_SEC;
 		if (curr_tick_time - c8->prev_tick_time >= tick_duration) {
 			--c8->delay_timer;
-			c8->prev_tick_time = curr_tick_time;
+		    c8->prev_tick_time = curr_tick_time;
 		}
 	}
 
 	if (c8->sound_timer > 0) {
-		float tick_duration = 1000.0 / hz / 1000.0;
+        float tick_duration = 1000.0 / hz / 1000.0;
 		float curr_tick_time = (float)clock() / CLOCKS_PER_SEC;
 		if (curr_tick_time - c8->prev_tick_time >= tick_duration) {
 			--c8->sound_timer;

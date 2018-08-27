@@ -221,6 +221,7 @@ static void create_window(GFXscreen gfxs)
     );
 
 	glfwMakeContextCurrent(gfxs->win);
+    glfwSwapInterval(0);
 }
 
 static void init_glad(void)
