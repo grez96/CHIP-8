@@ -20,11 +20,13 @@ static void load_fontset(Chip8 c8);
 
 static void update_timers(Chip8 c8, unsigned hz);
 
+static void opcode_00e0(Chip8 c8);
 static void opcode_00ee(Chip8 c8);
 static void opcode_1nnn(Chip8 c8);
 static void opcode_2nnn(Chip8 c8);
 static void opcode_3xnn(Chip8 c8);
 static void opcode_4xkk(Chip8 c8);
+static void opcode_5xy0(Chip8 c8);
 static void opcode_6xkk(Chip8 c8);
 static void opcode_7xnn(Chip8 c8);
 static void opcode_8xy0(Chip8 c8);
@@ -34,12 +36,16 @@ static void opcode_8xy5(Chip8 c8);
 static void opcode_annn(Chip8 c8);
 static void opcode_cxnn(Chip8 c8);
 static void opcode_dxyn(Chip8 c8);
+static void opcode_ex9e(Chip8 c8, Map keypad_state_map);
 static void opcode_exa1(Chip8 c8, Map keypad_state_map);
 static void opcode_fx07(Chip8 c8);
+static void opcode_fx0a(Chip8 c8, Map keypad_state_map);
 static void opcode_fx15(Chip8 c8);
 static void opcode_fx18(Chip8 c8);
+static void opcode_fx1e(Chip8 c8);
 static void opcode_fx29(Chip8 c8);
 static void opcode_fx33(Chip8 c8);
+static void opcode_fx55(Chip8 c8);
 static void opcode_fx65(Chip8 c8);
 
 
@@ -58,6 +64,7 @@ struct Chip8_t {
 	float prev_tick_time;
 	unsigned short stack[STACK_SZ];
 	unsigned short sp;
+	bool execution_blocked;
 };
 
 
@@ -87,6 +94,7 @@ static void initialize_chip8(Chip8 c8)
 	memset(c8, 0, sizeof(struct Chip8_t));
 	c8->pc = 0x200;
 	load_fontset(c8);
+	c8->execution_blocked = false;
 }
 
 static void load_fontset(Chip8 c8)
@@ -131,14 +139,23 @@ const unsigned char* chip8_get_gfx(const Chip8 c8)
 
 void chip8_execute_opcode(Chip8 c8, const Map keypad_state_map)
 {
-	if (!c8->memory[0x200])
+	if (!c8->memory[0x200] && !c8->memory[0x201])
 		exit_log(FNAME, 1, "Failed executing opcode, no program loaded.");
+
+	if (c8->execution_blocked) {
+		opcode_fx0a(c8, keypad_state_map);
+		return;
+	}
 
 	update_timers(c8, 60);
 	c8->opcode = c8->memory[c8->pc] << 8 | c8->memory[c8->pc + 1];
 	switch (c8->opcode & 0xF000) {
 	case 0x0000:
 		switch (c8->opcode & 0x000F) {
+		case 0x0000:
+			opcode_00e0(c8);
+			break;
+
 		case 0x000E:
 			opcode_00ee(c8);
 			break;
@@ -162,6 +179,10 @@ void chip8_execute_opcode(Chip8 c8, const Map keypad_state_map)
 
 	case 0x4000:
 		opcode_4xkk(c8);
+		break;
+
+	case 0x5000:
+		opcode_5xy0(c8);
 		break;
 
 	case 0x6000:
@@ -209,6 +230,10 @@ void chip8_execute_opcode(Chip8 c8, const Map keypad_state_map)
 
 	case 0xE000:
 		switch (c8->opcode & 0x00FF) {
+		case 0x009E:
+			opcode_ex9e(c8, keypad_state_map);
+			break;
+
 		case 0x00A1:
 			opcode_exa1(c8, keypad_state_map);
 			break;
@@ -224,6 +249,10 @@ void chip8_execute_opcode(Chip8 c8, const Map keypad_state_map)
 			opcode_fx07(c8);
 			break;
 
+		case 0x000A:
+			opcode_fx0a(c8, keypad_state_map);
+			break;
+
 		case 0x0015:
 			opcode_fx15(c8);
 			break;
@@ -232,12 +261,20 @@ void chip8_execute_opcode(Chip8 c8, const Map keypad_state_map)
 			opcode_fx18(c8);
 			break;
 
+		case 0x001E:
+			opcode_fx1e(c8);
+			break;
+
 		case 0x0029:
 			opcode_fx29(c8);
 			break;
 
 		case 0x0033:
 			opcode_fx33(c8);
+			break;
+
+		case 0x0055:
+			opcode_fx55(c8);
 			break;
 
 		case 0x0065:
@@ -278,6 +315,12 @@ static void update_timers(Chip8 c8, unsigned hz)
 	}
 }
 
+// clear the gfx
+static void opcode_00e0(Chip8 c8)
+{
+	memset(c8->gfx, 0, GFX_SZ);
+}
+
 // return from subroutine
 static void opcode_00ee(Chip8 c8)
 {
@@ -306,10 +349,17 @@ static void opcode_3xnn(Chip8 c8)
 		c8->pc += 2;
 }
 
-// skip next instruction if V[x] == kk
+// skip next instruction if V[x] != kk
 static void opcode_4xkk(Chip8 c8)
 {
 	if (c8->V[(c8->opcode & 0x0F00) >> 8] != (c8->opcode & 0x00FF))
+		c8->pc += 2;
+}
+
+// skip next instruction if V[x] == V[y]
+static void opcode_5xy0(Chip8 c8)
+{
+	if (c8->V[(c8->opcode & 0x0F00) >> 8] == c8->V[(c8->opcode & 0x00F0) >> 4])
 		c8->pc += 2;
 }
 
@@ -385,6 +435,13 @@ static void opcode_dxyn(Chip8 c8)
 	}
 }
 
+// skip next instruction if key V[x] is pressed
+static void opcode_ex9e(Chip8 c8, Map keypad_state_map)
+{
+	if (map_get(keypad_state_map, c8->V[(c8->opcode & 0x0F00) >> 8]))
+		c8->pc += 2;
+}
+
 // skip next instruction if key V[x] is not pressed
 static void opcode_exa1(Chip8 c8, Map keypad_state_map)
 {
@@ -396,6 +453,19 @@ static void opcode_exa1(Chip8 c8, Map keypad_state_map)
 static void opcode_fx07(Chip8 c8)
 {
 	c8->V[(c8->opcode & 0x0F00) >> 8] = c8->delay_timer;
+}
+
+// halt execution until key is pressed, store key in V[x]
+static void opcode_fx0a(Chip8 c8, Map keypad_state_map)
+{
+	for(size_t i = 0; i < map_get_size(keypad_state_map); ++i)
+		if (map_get(keypad_state_map, i)) {
+			c8->execution_blocked = false;
+			c8->V[(c8->opcode & 0x0F00) >> 8] = i;
+			return ;
+		}
+
+	c8->execution_blocked = true;
 }
 
 // set delay timer to V[x]
@@ -412,6 +482,12 @@ static void opcode_fx18(Chip8 c8)
 	c8->prev_tick_time = (float)clock() / CLOCKS_PER_SEC;
 }
 
+// set I = I + V[x]
+static void opcode_fx1e(Chip8 c8)
+{
+	c8->I += c8->V[(c8->opcode & 0x0F00) >> 8];
+}
+
 // store sprite for character V[x] at I
 static void opcode_fx29(Chip8 c8)
 {
@@ -425,6 +501,13 @@ static void opcode_fx33(Chip8 c8)
 	c8->memory[c8->I] = num / 100;
 	c8->memory[c8->I + 1] = num % 100 / 10;
 	c8->memory[c8->I + 2] = num  % 100 % 10;
+}
+
+// store V[0] - V[x] starting at I
+static void opcode_fx55(Chip8 c8)
+{
+	for (size_t i = 0; i <= (c8->opcode & 0x0F00) >> 8; ++i)
+		c8->memory[c8->I + i] = c8->V[i];
 }
 
 // fills V[0] - V[x] with values starting at I

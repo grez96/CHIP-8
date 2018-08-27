@@ -8,7 +8,7 @@ void default_keypad_keyboard_mapping(GFXscreen gfxs);
 int main(void)
 {
 	Chip8 c8 = chip8_create();
-	chip8_load_program(c8, "../programs/pong.ch8");
+	chip8_load_program(c8, "../programs/tank.ch8");
 
 	GFXscreen gfxs = GFXscreen_create(1200, 800, "CHIP-8", CHIP8_DISPLAY_WIDTH,
 		CHIP8_DISPLAY_HEIGHT, 0xFFFFFF, 0x000000, 500, 10);
