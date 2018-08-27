@@ -680,7 +680,6 @@ void GFXscreen_destroy(GFXscreen gfxs)
 	free(gfxs->vertices);
 	glDeleteProgram(gfxs->program);
 	glfwDestroyWindow(gfxs->win);
-	glfwTerminate();
 	free(gfxs);
 	instance_exists = false;
 	active_instance = NULL;
