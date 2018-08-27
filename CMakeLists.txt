@@ -4,6 +4,9 @@ cmake_minimum_required(VERSION 3.0)
 project(CHIP-8)
 
 # dependency management
+# git - terminate if not found
+find_package(Git REQUIRED)
+
 # OpenGL - terminate if not found
 find_package(OpenGL REQUIRED)
 
