@@ -200,6 +200,9 @@ static void init_glfw(void)
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    #ifdef __APPLE__
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    #endif
 }
 
 static void create_window(GFXscreen gfxs)
@@ -482,13 +485,19 @@ static void generate_boarder_indices(struct Boarder *boarder)
 {
 	for (size_t i = 0; i < boarder->indices_sz;) {
 		// top right triangle
-		boarder->indices[i++] = i / 6 * 4;
-		boarder->indices[i++] = i / 6 * 4 + 1;
-		boarder->indices[i++] = i / 6 * 4 + 3;
+		boarder->indices[i] = i / 6 * 4;
+        ++i;
+		boarder->indices[i] = i / 6 * 4 + 1;
+        ++i;
+		boarder->indices[i] = i / 6 * 4 + 3;
+        ++i;
 		// bottom left triangle
-		boarder->indices[i++] = i / 6 * 4;
-		boarder->indices[i++] = i / 6 * 4 + 2;
-		boarder->indices[i++] = i / 6 * 4 + 3;
+		boarder->indices[i] = i / 6 * 4;
+        ++i;
+		boarder->indices[i] = i / 6 * 4 + 2;
+        ++i;
+		boarder->indices[i] = i / 6 * 4 + 3;
+        ++i;
 	}
 }
 

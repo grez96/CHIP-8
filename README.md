@@ -32,7 +32,7 @@
 
 ## Installation
 * Required modules - to clone and build this aplication the following must be installed:
-    - [OpenGL V3.0+](https://www.opengl.org/)
+    - [OpenGL V4.0+](https://www.opengl.org/)
     - [Git](https://git-scm.com/)
     - [CMake](https://cmake.org/)
 * Building - From the command line run the following commands:
