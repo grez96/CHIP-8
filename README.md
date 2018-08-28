@@ -60,6 +60,18 @@ cmake ..
 * CHIP-8 - ROM Interpreter
     - ESC to exit any time
     - Windowing features such as minimizing, maximizing, closing, and resizing work in their native expected way
+    - default keybindings:
+```
++-+-+-+-+	+-+-+-+-+
+|1|2|3|C|	|1|2|3|4|
++-+-+-+-+	+-+-+-+-+
+|4|5|6|D|	|Q|W|E|R|
++-+-+-+-+	+-+-+-+-+
+|7|8|9|E|	|A|S|D|F|
++-+-+-+-+	+-+-+-+-+
+|A|0|B|F|	|Z|X|C|V|
++-+-+-+-+	+-+-+-+-+
+```
 <hr>
 
 ## Credits

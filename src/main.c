@@ -16,7 +16,6 @@ int main(void)
 {
 	unsigned input;
 	for (;;) {
-		clear_screen();
 		print_menu();
 		
 		if (scanf("%d", &input) != 1)
@@ -27,6 +26,7 @@ int main(void)
 			break;
 
 		run_emulator(parse_num_to_program(input));
+        clear_screen();
 	}
 
 	return 0;
@@ -103,20 +103,20 @@ void run_emulator(const char *program)
 	chip8_destroy(c8);
 }
 
-/*
- * Keypad		Keyboard
- * +-+-+-+-+	+-+-+-+-+
- * |1|2|3|C|	|1|2|3|4|
- * +-+-+-+-+	+-+-+-+-+
- * |4|5|6|D|	|Q|W|E|R|
- * +-+-+-+-+	+-+-+-+-+
- * |7|8|9|E|	|A|S|D|F|
- * +-+-+-+-+	+-+-+-+-+
- * |A|0|B|F|	|Z|X|C|V|
- * +-+-+-+-+	+-+-+-+-+
- */
 void default_keypad_keyboard_mapping(GFXscreen gfxs)
 {
+    printf("default keybindings\n");
+    printf("Keypad		Keyboard\n");
+    printf("+-+-+-+-+	+-+-+-+-+\n");
+    printf("|1|2|3|C|	|1|2|3|4|\n");
+    printf("+-+-+-+-+	+-+-+-+-+\n");
+    printf("|4|5|6|D|	|Q|W|E|R|\n");
+    printf("+-+-+-+-+	+-+-+-+-+\n");
+    printf("|7|8|9|E|	|A|S|D|F|\n");
+    printf("+-+-+-+-+	+-+-+-+-+\n");
+    printf("|A|0|B|F|	|Z|X|C|V|\n");
+    printf("+-+-+-+-+	+-+-+-+-+\n");
+
 	GFXscreen_map_keypad_keyboard(gfxs, 0, 'X');
 	GFXscreen_map_keypad_keyboard(gfxs, 1, '1');
 	GFXscreen_map_keypad_keyboard(gfxs, 2, '2');
