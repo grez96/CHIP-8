@@ -9,6 +9,7 @@
 
 #define FNAME "Chip8.c"
 
+
 #define MEMORY_SZ 0xFFF
 #define V_SZ 0x10
 #define GFX_SZ CHIP8_DISPLAY_WIDTH * CHIP8_DISPLAY_HEIGHT
@@ -20,6 +21,11 @@ static void load_fontset(Chip8 c8);
 
 static void update_timers(Chip8 c8, unsigned hz);
 
+static unsigned short NNN(unsigned short oc);
+static unsigned char kk(unsigned short oc);
+static unsigned char N(unsigned short oc);
+static unsigned char X(unsigned short oc);
+static unsigned char Y(unsigned short oc);
 static void opcode_00e0(Chip8 c8);
 static void opcode_00ee(Chip8 c8);
 static void opcode_1nnn(Chip8 c8);
@@ -30,10 +36,17 @@ static void opcode_5xy0(Chip8 c8);
 static void opcode_6xkk(Chip8 c8);
 static void opcode_7xnn(Chip8 c8);
 static void opcode_8xy0(Chip8 c8);
+static void opcode_8xy1(Chip8 c8);
 static void opcode_8xy2(Chip8 c8);
+static void opcode_8xy3(Chip8 c8);
 static void opcode_8xy4(Chip8 c8);
 static void opcode_8xy5(Chip8 c8);
+static void opcode_8xy6(Chip8 c8);
+static void opcode_8xy7(Chip8 c8);
+static void opcode_8xye(Chip8 c8);
+static void opcode_9xy0(Chip8 c8);
 static void opcode_annn(Chip8 c8);
+static void opcode_bnnn(Chip8 c8);
 static void opcode_cxnn(Chip8 c8);
 static void opcode_dxyn(Chip8 c8);
 static void opcode_ex9e(Chip8 c8, Map keypad_state_map);
@@ -80,7 +93,7 @@ Chip8 chip8_create(void)
 
 	static bool rand_seeded;
 	if (!rand_seeded) {
-		srand(time(NULL));
+		srand((unsigned int)time(NULL));
 		rand_seeded = true;
 	}
 
@@ -198,11 +211,16 @@ void chip8_execute_opcode(Chip8 c8, const Map keypad_state_map)
 		case 0x0000:
 			opcode_8xy0(c8);
 			break;
+		case 0x0001:
+			opcode_8xy1(c8);
+			break;
 
 		case 0x0002:
 			opcode_8xy2(c8);
 			break;
-
+		case 0x0003:
+			opcode_8xy3(c8);
+			break;
 		case 0x0004:
 			opcode_8xy4(c8);
 			break;
@@ -210,16 +228,29 @@ void chip8_execute_opcode(Chip8 c8, const Map keypad_state_map)
 		case 0x0005:
 			opcode_8xy5(c8);
 			break;
+		case 0x0006:
+			opcode_8xy6(c8);
+			break;
+		case 0x0007:
+			opcode_8xy7(c8);
+			break;
+		case 0x000e:
+			opcode_8xye(c8);
+			break;
 
 		default:
 			goto UNKNOWN_OPCODE;
 		}
 		break;
-
+	case 0x9000:
+		opcode_9xy0(c8);
+		break;
 	case 0xA000:
 		opcode_annn(c8);
 		break;
-
+	case 0xB000:
+		opcode_bnnn(c8);
+		break;
 	case 0xC000:
 		opcode_cxnn(c8);
 		break;
@@ -297,7 +328,7 @@ void chip8_execute_opcode(Chip8 c8, const Map keypad_state_map)
 static void update_timers(Chip8 c8, unsigned hz)
 {
 	if (c8->delay_timer > 0) {
-        float tick_duration = 1000.0 / hz / 1000.0;
+        float tick_duration = 1000.0f / hz / 1000.0f;
 		float curr_tick_time = (float)clock() / CLOCKS_PER_SEC;
 		if (curr_tick_time - c8->prev_tick_time >= tick_duration) {
 			--c8->delay_timer;
@@ -306,7 +337,7 @@ static void update_timers(Chip8 c8, unsigned hz)
 	}
 
 	if (c8->sound_timer > 0) {
-        float tick_duration = 1000.0 / hz / 1000.0;
+        float tick_duration = 1000.0f / hz / 1000.0f;
 		float curr_tick_time = (float)clock() / CLOCKS_PER_SEC;
 		if (curr_tick_time - c8->prev_tick_time >= tick_duration) {
 			--c8->sound_timer;
@@ -314,154 +345,248 @@ static void update_timers(Chip8 c8, unsigned hz)
 		}
 	}
 }
+static unsigned short NNN(unsigned short oc) {
+	return oc & 0x0FFF;
+}
+static unsigned char kk(unsigned short oc) {
+	return oc & 0x00FF;
+}
+static unsigned char N(unsigned short oc) {
+	return oc & 0x000F;
+}
+static unsigned char X(unsigned short oc) {
+	return (oc & 0x0F00) >> 8;
+}
+static unsigned char Y(unsigned short oc) {
+	return (oc & 0x00F0) >> 4;
+}
+
+#define OC c8->opcode	//undefined at line 651
 
 // clear the gfx
+//mk: Passed
 static void opcode_00e0(Chip8 c8)
 {
 	memset(c8->gfx, 0, GFX_SZ);
 }
 
 // return from subroutine
+//mk: passed
 static void opcode_00ee(Chip8 c8)
 {
-	c8->pc = c8->stack[--c8->sp];
+	c8->pc = c8->stack[--(c8->sp)];
 }
 
 // set pc to nnn
+//mk: passed
 static void opcode_1nnn(Chip8 c8)
 {
-	c8->pc = c8->opcode & 0x0FFF;
+	c8->pc = NNN(OC);
 	c8->pc -= 2;
 }
 
 // call subroutine at address nnn
+//mk: passed
 static void opcode_2nnn(Chip8 c8)
 {
-	c8->stack[c8->sp++] = c8->pc;
-	c8->pc = c8->opcode & 0x0FFF;
+	c8->stack[(c8->sp)++] = c8->pc;
+	c8->pc = NNN(OC);
 	c8->pc -= 2;
 }
 
 // skip next instruction if V[x] == nn
+//mk: passed
 static void opcode_3xnn(Chip8 c8)
 {
-	if (c8->V[(c8->opcode & 0x0F00) >> 8] == (c8->opcode & 0x00FF))
+	if (c8->V[X(OC)] == kk(OC)) 
 		c8->pc += 2;
 }
 
 // skip next instruction if V[x] != kk
+//mk: passed
 static void opcode_4xkk(Chip8 c8)
 {
-	if (c8->V[(c8->opcode & 0x0F00) >> 8] != (c8->opcode & 0x00FF))
+	if (c8->V[X(OC)] != kk(OC))
 		c8->pc += 2;
 }
 
 // skip next instruction if V[x] == V[y]
+//mk: passed
 static void opcode_5xy0(Chip8 c8)
 {
-	if (c8->V[(c8->opcode & 0x0F00) >> 8] == c8->V[(c8->opcode & 0x00F0) >> 4])
+	if (c8->V[X(OC)] == c8->V[Y(OC)])
 		c8->pc += 2;
 }
 
 // set V[x] to the value kk
+//mk: passed
 static void opcode_6xkk(Chip8 c8)
 {
-	c8->V[(c8->opcode & 0x0F00) >> 8] = c8->opcode & 0x00FF;
+	c8->V[X(OC)] = kk(OC);
 }
 
 // add nn to V[x]
+//mk: undefined edge case
 static void opcode_7xnn(Chip8 c8)
 {
-	c8->V[(c8->opcode & 0x0F00) >> 8] += c8->opcode & 0x00FF;
+	//Checking if sum exceeds 8-bit value
+	if (c8->V[X(OC)] + kk(OC) > 0xFF) {
+		//printf("OC: %x\tX: %d\tKK: %d\tSum: %d\n",c8->opcode, c8->V[X(OC)], kk(OC), c8->V[X(OC)] + kk(OC));
+	}
+	c8->V[X(OC)] += kk(OC);
 }
 
 // set V[x] to V[y]
+//mk: passed
 static void opcode_8xy0(Chip8 c8)
 {
-	c8->V[(c8->opcode & 0x0F00) >> 8] = c8->V[(c8->opcode & 0x00F0) >> 4];
+	c8->V[X(OC)] = c8->V[Y(OC)];
 }
-
+// set V[x] to bitwise OR of V[x] and V[y]
+//mk: done & passed
+static void opcode_8xy1(Chip8 c8)
+{
+	c8->V[X(OC)] |= c8->V[Y(OC)];
+}
 // set V[x] to bitwise AND of V[x] and V[y]
+//mk: passed 
 static void opcode_8xy2(Chip8 c8)
 {
-	c8->V[(c8->opcode & 0x0F00) >> 8] &= c8->V[(c8->opcode & 0x00F0) >> 4];
+	c8->V[X(OC)] &= c8->V[Y(OC)];
 }
-
+// set V[x] to bitwise XOR of V[x] and V[y]
+//mk: done & passed
+static void opcode_8xy3(Chip8 c8)
+{
+	c8->V[X(OC)] ^= c8->V[Y(OC)];
+}
 // set V[x] to V[x] + V[y], set V[0xF] if result > 8 bits, store first 8 bits
+//mk: passed
 static void opcode_8xy4(Chip8 c8)
 {
-	unsigned short result =
-		c8->V[(c8->opcode & 0x0F00) >> 8] + c8->V[(c8->opcode & 0x00F0) >> 4];
-	c8->V[(c8->opcode & 0x0F00) >> 8] = result & 0xFF;
-	c8->V[0xF] = result > 0xFF;
+	unsigned short res = c8->V[X(OC)] + c8->V[Y(OC)];
+	c8->V[X(OC)] = (unsigned char)res;
+	c8->V[0xf] = res > 0xFF;
 }
 
 // set V[x] to V[x] - V[y], set V[0xF] if V[x] > V[y]
+//mk: should result be in two's complement or no
+//as in Vx = 10 Vy= 15
+//is result stored as -5 with carry flag disabled
+//or result stored as +5 with carry flag disabled
 static void opcode_8xy5(Chip8 c8)
 {
-	c8->V[0xf] =
-		c8->V[(c8->opcode & 0x0F00) >> 8] > c8->V[(c8->opcode & 0x00F0) >> 4];
-	c8->V[(c8->opcode & 0x0F00) >> 8] -= c8->V[(c8->opcode & 0x00F0) >> 4];
+	//TODO (mk) change res into positive number if needed
+	signed short res = c8->V[X(OC)] - c8->V[Y(OC)];
+	c8->V[0xf] = res > 0;
+	c8->V[X(OC)] = (unsigned char)res;
+}
+//Set Vx = Vx SHR 1
+//mk: done & passed
+static void opcode_8xy6(Chip8 c8)
+{
+	c8->V[0xf] = c8->V[X(OC)] & 1;
+	c8->V[X(OC)] >>= 1;
+	//c8->V[X(OC)] /= 2; same result
 }
 
+//Set Vx = Vy - Vx, set VF = NOT borrow
+//Same issue as 8xy5
+//mk: conditionally passes
+static void opcode_8xy7(Chip8 c8)
+{
+	//TODO (mk) change res into positive number if needed
+	signed short res = c8->V[Y(OC)] - c8->V[X(OC)];
+	c8->V[0xf] = res > 0;
+	c8->V[X(OC)] = (unsigned char)res;
+}
+//Set Vx = Vx SHL 1
+//mk: done & passed
+static void opcode_8xye(Chip8 c8)
+{
+	c8->V[0xf] = (c8->V[X(OC)] >> 7) & 1;
+	c8->V[X(OC)] <<= 1;
+	//c8->V[X(OC)] *= 2; same result
+}
+//Skip next instruction if Vx != Vy
+//mk: done & passed
+static void opcode_9xy0(Chip8 c8)
+{
+	if (c8->V[X(OC)] != c8->V[Y(OC)])
+		c8->pc += 2;
+}
 // set I to address nnn
+//mk: passed
 static void opcode_annn(Chip8 c8)
 {
-	c8->I = 0x0FFF & c8->opcode;
+	c8->I = NNN(OC);
 }
-
+//Jump to location nnn + V0
+//mk: done & passed
+static void opcode_bnnn(Chip8 c8)
+{
+	c8->pc = NNN(OC) + c8->V[0];
+}
 // set V[x] to a random number(0-255) & nn
+//mk: passed, rand() does not need to be limited to 1 byte range
 static void opcode_cxnn(Chip8 c8)
 {
-	c8->V[(c8->opcode & 0x0F00) >> 8] = rand() % 0xFF & c8->opcode & 0x00FF;
+	c8->V[X(OC)] = rand() & OC;
 }
 
 // draw sprite from I, at (x,y), n pixels high, set V[0xF] on collision
+//mk: looks ok, forced wrapping by modulus operation
+//		and skipping any unnecessary drawing
 static void opcode_dxyn(Chip8 c8)
 {
-	unsigned char x_pos = c8->V[(c8->opcode & 0x0F00) >> 8];
-	unsigned char y_pos = c8->V[(c8->opcode & 0x00F0) >> 4];
-	unsigned char height = c8->opcode & 0x000F;
+	unsigned char x_pos = c8->V[X(OC)] % 64;
+	unsigned char y_pos = c8->V[Y(OC)] % 32;
+	unsigned char height = N(OC);
 
-	unsigned char pixel;
 	for (unsigned char i = 0; i < height; ++i) {
-		pixel = c8->memory[c8->I + i];
+		unsigned char pixel = c8->memory[c8->I + i];
 		for (unsigned char j = 0; j < 8; ++j) {
-			if (pixel & 0x80 >> j) {
-				c8->V[0xF] = c8->gfx[(y_pos + i) * 64 + x_pos + j];
-				c8->gfx[(y_pos + i) * 64 + x_pos + j] ^= 1;
+			if (y_pos + i < 32 && x_pos + j < 64) {
+				if (pixel & 0x80 >> j) {
+					c8->V[0xF] = c8->gfx[(y_pos + i) * 64 + x_pos + j];
+					c8->gfx[(y_pos + i) * 64 + x_pos + j] ^= 1;
+				}
 			}
 		}
 	}
 }
 
 // skip next instruction if key V[x] is pressed
+//mk: passed
 static void opcode_ex9e(Chip8 c8, Map keypad_state_map)
 {
-	if (map_get(keypad_state_map, c8->V[(c8->opcode & 0x0F00) >> 8]))
+	if (map_get(keypad_state_map, c8->V[X(OC)]))
 		c8->pc += 2;
 }
 
 // skip next instruction if key V[x] is not pressed
+//mk: passed
 static void opcode_exa1(Chip8 c8, Map keypad_state_map)
 {
-	if (!map_get(keypad_state_map, c8->V[(c8->opcode & 0x0F00) >> 8]))
+	if (!map_get(keypad_state_map, c8->V[X(OC)]))
 		c8->pc += 2;
 }
 
 // set V[x] to delay timer
+//mk: passed
 static void opcode_fx07(Chip8 c8)
 {
-	c8->V[(c8->opcode & 0x0F00) >> 8] = c8->delay_timer;
+	c8->V[X(OC)] = c8->delay_timer;
 }
 
 // halt execution until key is pressed, store key in V[x]
+//mk: passed
 static void opcode_fx0a(Chip8 c8, Map keypad_state_map)
 {
 	for(size_t i = 0; i < map_get_size(keypad_state_map); ++i)
 		if (map_get(keypad_state_map, i)) {
 			c8->execution_blocked = false;
-			c8->V[(c8->opcode & 0x0F00) >> 8] = i;
+			c8->V[X(OC)] = (unsigned char)i;
 			return ;
 		}
 
@@ -469,54 +594,61 @@ static void opcode_fx0a(Chip8 c8, Map keypad_state_map)
 }
 
 // set delay timer to V[x]
+//mk: passed
 static void opcode_fx15(Chip8 c8)
 {
-	c8->delay_timer = c8->V[(c8->opcode & 0x0F00) >> 8];
+	c8->delay_timer = c8->V[X(OC)];
 	c8->prev_tick_time = (float)clock() / CLOCKS_PER_SEC;
 }
 
 // set sound timer to V[x]
+//mk: passed
 static void opcode_fx18(Chip8 c8)
 {
-	c8->sound_timer = c8->V[(c8->opcode & 0x0F00) >> 8];
+	c8->sound_timer = c8->V[X(OC)];
 	c8->prev_tick_time = (float)clock() / CLOCKS_PER_SEC;
 }
 
 // set I = I + V[x]
+//mk: passes, but no check done for if I goes out of range
 static void opcode_fx1e(Chip8 c8)
 {
-	c8->I += c8->V[(c8->opcode & 0x0F00) >> 8];
+	c8->I += c8->V[X(OC)];
 }
 
 // store sprite for character V[x] at I
+//mk: passed, but no check done for if I goes out of range
 static void opcode_fx29(Chip8 c8)
 {
-	c8->I = c8->V[(c8->opcode & 0x0F00) >> 8] * 5;
+	c8->I = c8->V[X(OC)] * 5;
 }
 
 // store decimal value of V[x] starting at I
+//mk: passed, but no check done for if memory goes out of range
 static void opcode_fx33(Chip8 c8)
 {
-	unsigned short num = c8->V[(c8->opcode & 0x0F00) >> 8];
+	unsigned short num = c8->V[X(OC)];
 	c8->memory[c8->I] = num / 100;
 	c8->memory[c8->I + 1] = num % 100 / 10;
-	c8->memory[c8->I + 2] = num  % 100 % 10;
+	c8->memory[c8->I + 2] = num % 10;
 }
 
 // store V[0] - V[x] starting at I
+//mk: passed, but no check done for if memory goes out of range
 static void opcode_fx55(Chip8 c8)
 {
-	for (size_t i = 0; i <= (c8->opcode & 0x0F00) >> 8; ++i)
+	for (size_t i = 0; i <= (size_t)X(OC); ++i)
 		c8->memory[c8->I + i] = c8->V[i];
 }
 
 // fills V[0] - V[x] with values starting at I
+//mk: passed
 static void opcode_fx65(Chip8 c8)
 {
-	for (unsigned char i = 0; i <= (c8->opcode & 0x0F00) >> 8; ++i)
+	for (unsigned char i = 0; i <= X(OC); ++i)
 		c8->V[i] = c8->memory[c8->I + i];
 }
-
+#undef OC
 void chip8_destroy(Chip8 c8)
 {
 	free(c8);
