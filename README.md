@@ -75,8 +75,10 @@ cmake ..
 <hr>
 
 ## Credits
-* Developed and maintained by Gleb Reznicov
-* Mac OSX debugging done by Xin Song Felix Zhang
+* Developed and maintained by [Gleb Reznicov](https://github.com/grez96)
+* Contributors:
+    - Opcode debugging and remaining implementations done by [mobius1musaasum](https://github.com/mobius1musaasum)
+    - Mac OSX debugging done by Xin Song Felix Zhang
 * The following open source software/packages were used:
     - [OpenGL](https://www.opengl.org/)
     - [GLFW](https://www.glfw.org/)
